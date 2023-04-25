@@ -17,4 +17,6 @@
   &lt;Assembly Path="C:\Program Files (x86)\Steam\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp.dll" /&gt;&#xD;
   &lt;Assembly Path="C:\Users\elev\RiderProjects\TheLongDriveSyncRadio\bin\Debug\Steamworks.NET.dll" /&gt;&#xD;
   &lt;Assembly Path="D:\SteamLibrary\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp.dll" /&gt;&#xD;
+  &lt;Assembly Path="C:\Users\elev\RiderProjects\TheLongDriveSyncRadio\bin\Debug\MelonLoader.dll" /&gt;&#xD;
+  &lt;Assembly Path="C:\Users\elev\RiderProjects\TheLongDriveSyncRadio\bin\Debug\Assembly-CSharp.dll" /&gt;&#xD;
 &lt;/AssemblyExplorer&gt;</s:String></wpf:ResourceDictionary>

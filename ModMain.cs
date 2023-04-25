@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using HarmonyLib;
 using MelonLoader;
 using Steamworks;
@@ -12,6 +13,8 @@ namespace TheLongDriveSyncRadio
 {
     public class ModMain : MelonMod
     {
+        public static sns Sns;
+        
         private static List<string> _audioFiles = new List<string>();
         public static List<AudioFilePacket> AudioFilesData = new List<AudioFilePacket>();
 
@@ -20,6 +23,7 @@ namespace TheLongDriveSyncRadio
             var harmony = new HarmonyLib.Harmony("tld.DeltaNeverUsed.SyncRadio");
             
             harmony.PatchAll();
+
         }
 
         
@@ -47,14 +51,16 @@ namespace TheLongDriveSyncRadio
             var customRadioPath = settingsscript.s.S.SCustomRadioPath;
             MelonLogger.Msg("CLOG scanning custom radio folder: " + customRadioPath);
             foreach (string file in Directory.GetFiles(customRadioPath))
-                _audioFiles.Add(file);
+                if (!_audioFiles.Contains(file))
+                    _audioFiles.Add(file);
             
             
             
             foreach (string directory in Directory.GetDirectories(customRadioPath, "*", SearchOption.AllDirectories))
             {
                 foreach (string file in Directory.GetFiles(directory))
-                    _audioFiles.Add(file);
+                    if (!_audioFiles.Contains(file))
+                        _audioFiles.Add(file);
             }
 
             foreach (var path in _audioFiles)
@@ -81,19 +87,29 @@ namespace TheLongDriveSyncRadio
     }
 
     [Serializable]
-    public class RadioPacket
+    public struct RadioPacket
     {
         
     }
 
     [Serializable]
-    public class AudioFilePacket
+    public struct AudioFilePacket
     {
         public string fileName;
         public byte[] data;
     }
+    
     [Serializable]
-    public class AudioFileRequestPacket
+    public struct PacketPart
+    {
+        public uint size;
+        public uint pId;
+        public uint pIndex;
+        public byte[] data;
+    }
+    
+    [Serializable]
+    public struct AudioFileRequestPacket
     {
         public string[] excludes;
     }
@@ -103,41 +119,142 @@ namespace TheLongDriveSyncRadio
         public static void Send<T>(CSteamID _id, T obj)
         {
             var data = new [] { (byte)sns.msgType.radio }.Concat(NetworkHelper.ObjectToByteArray(obj)).ToArray();
-            SteamNetworking.SendP2PPacket(_id, data, (uint) data.Length, EP2PSend.k_EP2PSendReliable);
+            if (!SteamNetworking.SendP2PPacket(_id, data, (uint) data.Length, EP2PSend.k_EP2PSendReliable))
+                MelonLogger.Error("Failed to send packet");
         }
     }
 
     [HarmonyPatch(typeof(sns), "RGeneralSyncMessage")]
     class Patch
     {
+        private static Random _rand = new Random();
+        public static List<CSteamID> AlreadySend = new List<CSteamID>();
+        
+        private static Dictionary<uint, List<PacketPart>> _recv = new Dictionary<uint, List<PacketPart>>();
+
+        private static void SendFile(CSteamID _id, AudioFileRequestPacket o)
+        {
+            foreach (var audioFile in ModMain.AudioFilesData)
+            {
+                foreach(var item in o.excludes)
+                {
+                    MelonLogger.Msg("Excludes: " + item);
+                }
+                if (o.excludes.Contains(audioFile.fileName))
+                {
+                    MelonLogger.Msg("Skipping: " + audioFile.fileName);
+                    continue;
+                }
+
+                MelonLogger.Msg($"Sending \"{audioFile.fileName}\" to {_id.m_SteamID}");
+                var fullAudioPacket = NetworkHelper.ObjectToByteArray(audioFile);
+                var chunkSize = 512 * 1024; // 512KB
+                var numChunks = (int)Math.Ceiling((double)fullAudioPacket.Length / chunkSize);
+
+                var packetId = (uint)_rand.Next();
+
+                for (uint i = 0; i < numChunks; i++)
+                {
+                    int offset = (int)i * chunkSize;
+                    int size = Math.Min(chunkSize, fullAudioPacket.Length - offset);
+                    var data = new byte[size];
+                    Array.Copy(fullAudioPacket, offset, data, 0, size);
+
+                    var packet = new PacketPart
+                    {
+                        size = (uint)numChunks,
+                        pId = packetId,
+                        pIndex = i,
+                        data = data
+                    };
+                    Thread.Sleep(500);
+                    MelonLogger.Msg($"Sending packet: {i}, out of {numChunks-1}");
+                    SendP2P.Send(_id, packet);
+                }
+                
+                Thread.Sleep(100);
+            }
+        }
+
         private static bool Prefix(sns __instance, CSteamID _id, byte[] _bytes, sns.msgType _type)
         {
             if (_type != sns.msgType.radio)
                 return true;
             
-
+            
             try
             {
-                var obj = NetworkHelper.ByteArrayToObject(_bytes);
-                MelonLogger.Msg("Bunger");
+                var obj = NetworkHelper.ByteArrayToObject(_bytes.Skip(1).ToArray());
                 
                 var objType = obj.GetType();
+
                 if (objType == typeof(AudioFileRequestPacket))
                 {
+                    if (AlreadySend.Contains(_id))
+                        return false;
+                    AlreadySend.Add(_id);
+                    
                     var o = (AudioFileRequestPacket)obj;
-                    foreach (var audioFile in ModMain.AudioFilesData)
-                    {
-                        if (o.excludes.Any(x => x == audioFile.fileName))
-                        {
-                            MelonLogger.Msg("Skipping: " + audioFile.fileName);
-                            continue;
-                        }
-                        
-                        MelonLogger.Msg($"Sending files to {_id.m_SteamID}");
-                        SendP2P.Send(_id, o);
-                    }
+                    var t = new Thread(() => SendFile(_id, o));
+                    t.Start();
                 }
 
+                if (objType == typeof(RadioPacket))
+                {
+                    mainscript.M.customRadio.LoadRandomSong();
+                }
+                
+                if (objType == typeof(PacketPart))
+                {
+                    var o = (PacketPart)obj;
+                    if (_recv.ContainsKey(o.pId))
+                    {
+                        if (_recv[o.pId].Any(x => x.pIndex == o.pIndex)) 
+                            return false;
+                        
+                        
+                        _recv[o.pId].Add(o);
+                    }
+                    else
+                    {
+                        if (o.pIndex > 10)
+                            return false;
+                        _recv.Add(o.pId, new List<PacketPart> {o});
+                    }
+                    
+                        
+                    
+                    MelonLogger.Msg($"Got Packet: {o.pId} for index: {o.pIndex} out of {o.size-1}");
+
+                    
+                    if (_recv[o.pId].Count < o.size)
+                        return false;
+
+                    MelonLogger.Msg("Trying to recombine data");
+
+                    var fullPacket = _recv[o.pId].OrderBy(p => p.pIndex).ToArray();
+                    var data = new byte[0];
+
+                    for (int i = 0; i < fullPacket.Length; i++)
+                    {
+                        data = data.Concat(fullPacket[i].data).ToArray();
+                    }
+
+                    _recv.Remove(o.pId);
+
+                    try
+                    {
+                        obj = NetworkHelper.ByteArrayToObject(data);
+                        objType = obj.GetType();
+                        MelonLogger.Msg("Done did it");
+                    }
+                    catch (Exception e)
+                    {
+                        MelonLogger.Error("Shit: "+e);
+                    }
+
+                }
+                
                 if (objType == typeof(AudioFilePacket))
                 {
                     var o = (AudioFilePacket)obj;
@@ -161,15 +278,40 @@ namespace TheLongDriveSyncRadio
     {
         private static void Prefix(sns __instance)
         {
+            ModMain.Sns = __instance;
+            Patch.AlreadySend = new List<CSteamID>();
+            if (__instance.lobby.isServer)
+                return;
+            
             var requestFiles = new AudioFileRequestPacket
             {
                 excludes = ModMain.AudioFilesData.Select(a => a.fileName).ToArray()
             };
-
-            var data = NetworkHelper.ObjectToByteArray(requestFiles);
             
             MelonLogger.Msg("Requested audio files from host");
             SendP2P.Send(SteamMatchmaking.GetLobbyOwner(__instance.lobby.lobbyID), requestFiles);
+        }
+    }
+    
+    [HarmonyPatch(typeof(sns), "SRadio")]
+    class PatchRadioCustomSend
+    {
+        private static void Prefix(sns __instance, int _id, bool _on, float _volume, float _frequency, bool _am)
+        {
+            var radio = savedatascript.d.toSaveStuff[_id].radio;
+            if (Math.Abs(radio.FR - 1080) < 1)
+            {
+                if (ModMain.Sns.lobby.isServer)
+                {
+                    MelonLogger.Msg("Is Cusom");
+                    for (int iMember = 0; iMember < SteamMatchmaking.GetNumLobbyMembers(ModMain.Sns.lobby.lobbyID); ++iMember)
+                    {
+                        CSteamID lobbyMemberByIndex = SteamMatchmaking.GetLobbyMemberByIndex(ModMain.Sns.lobby.lobbyID, iMember);
+                        if (lobbyMemberByIndex != SteamUser.GetSteamID())
+                            SendP2P.Send(lobbyMemberByIndex, new RadioPacket());
+                    }
+                }
+            }
         }
     }
 }
