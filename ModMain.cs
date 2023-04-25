@@ -89,7 +89,7 @@ namespace TheLongDriveSyncRadio
     [Serializable]
     public struct RadioPacket
     {
-        
+        public string fileName;
     }
 
     [Serializable]
@@ -172,7 +172,7 @@ namespace TheLongDriveSyncRadio
                     SendP2P.Send(_id, packet);
                 }
                 
-                Thread.Sleep(100);
+                Thread.Sleep(2000);
             }
         }
 
@@ -201,7 +201,12 @@ namespace TheLongDriveSyncRadio
 
                 if (objType == typeof(RadioPacket))
                 {
-                    mainscript.M.customRadio.LoadRandomSong();
+                    var o = (RadioPacket)obj;
+                    if (ModMain.AudioFilesData.All(a => a.fileName != o.fileName))
+                        return false;
+                    
+                    MelonLogger.Msg("Playing: "+o.fileName);
+                    mainscript.M.customRadio.LoadOneSong(settingsscript.s.S.SCustomRadioPath + "/" + o.fileName);
                 }
                 
                 if (objType == typeof(PacketPart))
@@ -293,25 +298,22 @@ namespace TheLongDriveSyncRadio
         }
     }
     
-    [HarmonyPatch(typeof(sns), "SRadio")]
+    [HarmonyPatch(typeof(custommusicscript), "LoadOneSong", new Type[] {typeof(string), typeof(int) })]
     class PatchRadioCustomSend
     {
-        private static void Prefix(sns __instance, int _id, bool _on, float _volume, float _frequency, bool _am)
+        private static void Prefix(custommusicscript __instance, string path)
         {
-            var radio = savedatascript.d.toSaveStuff[_id].radio;
-            if (Math.Abs(radio.FR - 1080) < 1)
+            if (ModMain.Sns.lobby.isServer)
             {
-                if (ModMain.Sns.lobby.isServer)
+                MelonLogger.Msg("Sending radio custom packet: "+Path.GetFileName(path));
+                for (int iMember = 0; iMember < SteamMatchmaking.GetNumLobbyMembers(ModMain.Sns.lobby.lobbyID); ++iMember)
                 {
-                    MelonLogger.Msg("Is Cusom");
-                    for (int iMember = 0; iMember < SteamMatchmaking.GetNumLobbyMembers(ModMain.Sns.lobby.lobbyID); ++iMember)
-                    {
-                        CSteamID lobbyMemberByIndex = SteamMatchmaking.GetLobbyMemberByIndex(ModMain.Sns.lobby.lobbyID, iMember);
-                        if (lobbyMemberByIndex != SteamUser.GetSteamID())
-                            SendP2P.Send(lobbyMemberByIndex, new RadioPacket());
-                    }
+                    CSteamID lobbyMemberByIndex = SteamMatchmaking.GetLobbyMemberByIndex(ModMain.Sns.lobby.lobbyID, iMember);
+                    if (lobbyMemberByIndex != SteamUser.GetSteamID())
+                        SendP2P.Send(lobbyMemberByIndex, new RadioPacket{fileName = Path.GetFileName(path)});
                 }
             }
+            
         }
     }
 }
