@@ -33,26 +33,26 @@
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="0Harmony">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\MelonLoader\net35\0Harmony.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\MelonLoader\net35\0Harmony.dll</HintPath>
         </Reference>
         <Reference Include="Assembly-CSharp">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp.dll</HintPath>
         </Reference>
         <Reference Include="Assembly-CSharp-firstpass">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
         </Reference>
         <Reference Include="MelonLoader">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\MelonLoader\net35\MelonLoader.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\MelonLoader\net35\MelonLoader.dll</HintPath>
         </Reference>
         <Reference Include="System" />
         <Reference Include="System.Core" />
         <Reference Include="System.Data" />
         <Reference Include="System.Xml" />
         <Reference Include="UnityEngine">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\UnityEngine.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\UnityEngine.dll</HintPath>
         </Reference>
         <Reference Include="UnityEngine.CoreModule">
-          <HintPath>..\..\..\..\Program Files (x86)\Steam\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+          <HintPath>..\..\SteamLibrary\steamapps\common\The Long Drive\TheLongDrive_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
         </Reference>
     </ItemGroup>
     <ItemGroup>
