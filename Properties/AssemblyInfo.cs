@@ -2,20 +2,20 @@
 using System.Runtime.InteropServices;
 
 using MelonLoader;
-using TheLongDriveSyncRadio;
+using TheLongDriveRadioSync;
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: MelonInfo(typeof(ModMain), "Custom radio Sync", "0.0.1", "DeltaNeverUsed")]
-[assembly: MelonGame("Genesz", "TheLongDrive")]
+[assembly: MelonInfo(typeof(ModMain), "Custom Radio Sync Resynchronized", "0.2a", "fork by RELMYMathieu, original by DeltaNeverUsed")]
+[assembly: MelonGame("RELMYMathieu", "TheLongDrive")]
 
-[assembly: AssemblyTitle("TheLongDriveSyncRadio")]
+[assembly: AssemblyTitle("TheLongDriveRadioSync")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("TheLongDriveSyncRadio")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
+[assembly: AssemblyProduct("TheLongDriveRadioSync")]
+[assembly: AssemblyCopyright("Copyright ©  2024")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

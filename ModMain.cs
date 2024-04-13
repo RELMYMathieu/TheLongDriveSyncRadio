@@ -6,10 +6,10 @@ using System.Threading;
 using HarmonyLib;
 using MelonLoader;
 using Steamworks;
-using TheLongDriveSyncRadio;
+using TheLongDriveRadioSync;
 
 
-namespace TheLongDriveSyncRadio
+namespace TheLongDriveRadioSync
 {
     public class ModMain : MelonMod
     {
