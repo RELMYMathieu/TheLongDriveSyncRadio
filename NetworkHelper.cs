@@ -1,37 +1,33 @@
-﻿using MelonLoader;
-using Newtonsoft.Json;
-using System;
-using System.Text;
+﻿using System;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
-public static class NetworkHelper
+namespace TheLongDriveSyncRadio
 {
-    // Convert an object to a byte array using JSON serialization
-    public static byte[] ObjectToByteArray(Object obj)
+    public static class NetworkHelper
     {
-        try
+        // Convert an object to a byte array
+        public static byte[] ObjectToByteArray(Object obj)
         {
-            string json = JsonConvert.SerializeObject(obj);
-            return Encoding.UTF8.GetBytes(json);
+            BinaryFormatter bf = new BinaryFormatter();
+            using (var ms = new MemoryStream())
+            {
+                bf.Serialize(ms, obj);
+                return ms.ToArray();
+            }
         }
-        catch (Exception e)
-        {
-            MelonLogger.Error("Error serializing object: " + e);
-            return null;
-        }
-    }
 
-    // Convert a byte array to an Object using JSON deserialization
-    public static Object ByteArrayToObject(byte[] arrBytes)
-    {
-        try
+        // Convert a byte array to an Object
+        public static Object ByteArrayToObject(byte[] arrBytes)
         {
-            string json = Encoding.UTF8.GetString(arrBytes);
-            return JsonConvert.DeserializeObject(json);
-        }
-        catch (Exception e)
-        {
-            MelonLogger.Error("Error deserializing object: " + e);
-            return null;
+            using (var memStream = new MemoryStream())
+            {
+                var binForm = new BinaryFormatter();
+                memStream.Write(arrBytes, 0, arrBytes.Length);
+                memStream.Seek(0, SeekOrigin.Begin);
+                var obj = binForm.Deserialize(memStream);
+                return obj;
+            }
         }
     }
 }

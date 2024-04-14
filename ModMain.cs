@@ -2,13 +2,11 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization.Formatters.Binary;
-using System.Text;
 using System.Threading;
 using HarmonyLib;
 using MelonLoader;
-using Newtonsoft.Json;
 using Steamworks;
+using TheLongDriveSyncRadio;
 
 namespace TheLongDriveRadioSync
 {
@@ -195,8 +193,8 @@ namespace TheLongDriveRadioSync
                     return false;
                 }
 
-                var json = Encoding.UTF8.GetString(_bytes, 1, _bytes.Length - 1);
-                var obj = JsonConvert.DeserializeObject(json);
+                var obj = NetworkHelper.ByteArrayToObject(_bytes.Skip(1).ToArray());
+
                 var objType = obj.GetType();
 
                 if (objType == typeof(AudioFileRequestPacket))
