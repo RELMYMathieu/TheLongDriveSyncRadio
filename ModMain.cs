@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
 using System.Threading;
 using HarmonyLib;
 using MelonLoader;
+using Newtonsoft.Json;
 using Steamworks;
 
 namespace TheLongDriveRadioSync
@@ -47,15 +49,30 @@ namespace TheLongDriveRadioSync
 
             var customRadioPath = settingsscript.s.S.SCustomRadioPath;
             MelonLogger.Msg("CLOG scanning custom radio folder: " + customRadioPath);
-            foreach (string file in Directory.GetFiles(customRadioPath))
-                if (!_audioFiles.Contains(file))
-                    _audioFiles.Add(file);
 
+            // Print files in the custom radio folder
+            foreach (string file in Directory.GetFiles(customRadioPath))
+            {
+                if (!_audioFiles.Contains(file))
+                {
+                    _audioFiles.Add(file);
+                    string format = Path.GetExtension(file).TrimStart('.').ToUpper();
+                    MelonLogger.Msg($"Found file: {Path.GetFileName(file)} (Format: {format})");
+                }
+            }
+
+            // Print files in subdirectories of the custom radio folder
             foreach (string directory in Directory.GetDirectories(customRadioPath, "*", SearchOption.AllDirectories))
             {
                 foreach (string file in Directory.GetFiles(directory))
+                {
                     if (!_audioFiles.Contains(file))
+                    {
                         _audioFiles.Add(file);
+                        string format = Path.GetExtension(file).TrimStart('.').ToUpper();
+                        MelonLogger.Msg($"Found file: {Path.GetFileName(file)} (Format: {format})");
+                    }
+                }
             }
 
             foreach (var path in _audioFiles)
@@ -79,7 +96,7 @@ namespace TheLongDriveRadioSync
         }
     }
 
-    [Serializable]
+        [Serializable]
     public struct RadioPacket
     {
         public string fileName;
@@ -172,7 +189,14 @@ namespace TheLongDriveRadioSync
 
             try
             {
-                var obj = NetworkHelper.ByteArrayToObject(_bytes.Skip(1).ToArray());
+                if (_bytes == null || _bytes.Length <= 1)
+                {
+                    MelonLogger.Error("Invalid packet data received.");
+                    return false;
+                }
+
+                var json = Encoding.UTF8.GetString(_bytes, 1, _bytes.Length - 1);
+                var obj = JsonConvert.DeserializeObject(json);
                 var objType = obj.GetType();
 
                 if (objType == typeof(AudioFileRequestPacket))
@@ -283,16 +307,23 @@ namespace TheLongDriveRadioSync
     [HarmonyPatch(typeof(custommusicscript), "LoadOneSong", new Type[] { typeof(string), typeof(int) })]
     class PatchRadioCustomSend
     {
+        private static string _lastSentSong = string.Empty;
+
         private static void Prefix(custommusicscript __instance, string path)
         {
             if (ModMain.Sns.lobby.isServer)
             {
-                MelonLogger.Msg($"Sending radio custom packet: {Path.GetFileName(path)}");
-                for (int iMember = 0; iMember < SteamMatchmaking.GetNumLobbyMembers(ModMain.Sns.lobby.lobbyID); ++iMember)
+                string songFileName = Path.GetFileName(path);
+                if (_lastSentSong != songFileName)
                 {
-                    CSteamID lobbyMemberByIndex = SteamMatchmaking.GetLobbyMemberByIndex(ModMain.Sns.lobby.lobbyID, iMember);
-                    if (lobbyMemberByIndex != SteamUser.GetSteamID())
-                        SendP2P.Send(lobbyMemberByIndex, new RadioPacket { fileName = Path.GetFileName(path) });
+                    _lastSentSong = songFileName;
+                    MelonLogger.Msg($"Sending radio custom packet: {songFileName}");
+                    for (int iMember = 0; iMember < SteamMatchmaking.GetNumLobbyMembers(ModMain.Sns.lobby.lobbyID); ++iMember)
+                    {
+                        CSteamID lobbyMemberByIndex = SteamMatchmaking.GetLobbyMemberByIndex(ModMain.Sns.lobby.lobbyID, iMember);
+                        if (lobbyMemberByIndex != SteamUser.GetSteamID())
+                            SendP2P.Send(lobbyMemberByIndex, new RadioPacket { fileName = songFileName });
+                    }
                 }
             }
         }
